@@ -1,0 +1,29 @@
+spring:
+  redis:
+    timeout: 6000
+    password:
+    cluster:
+      max-redirects: 3
+      nodes:
+        - 47.110.90.189:7001
+        - 47.110.90.189:7002
+        - 47.110.90.189:7003
+        - 47.110.90.189:7004
+        - 47.110.90.189:7005
+        - 47.110.90.189:7006
+    #使用jedis连接池
+    jedis:
+      pool:
+        max-active: 8
+        max-idle: 8
+        max-wait: 40
+        min-idle: 0
+
+#    使用springboot自带的lettuce连接池
+#    lettuce:
+#      pool:
+#        max-active: 8
+#        max-idle: 8
+#        max-wait: 40
+#        min-idle: 0
+
