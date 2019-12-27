@@ -9,10 +9,14 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
 /**
- * NIO 客户端简单实现
- *
- * 模拟客户端多个连接 到服务器
- */
+  * @author:李斌
+  *
+  * @description:NIO 简单客户端实现
+  *
+  * @create:2019-00-28 06:00
+  *
+  * @version
+  */
 @SuppressWarnings("all")
 public class NioClient {
     private static final String host = "";
