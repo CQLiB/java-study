@@ -56,7 +56,8 @@
 --------------------------
 **下图展示了channel，以及订阅该channel的三个客户端**
 ![](redis-publish-subscribe.png "redis-channel-client")
-****下图通过命令publish发送消息给channel****
+
+**下图通过命令publish发送消息给channel**
 ![](redis-publish-subscribe-message.png)
 
 
