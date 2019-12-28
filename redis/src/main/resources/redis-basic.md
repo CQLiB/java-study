@@ -59,4 +59,77 @@
 ****下图通过命令publish发送消息给channel****
 ![](redis-publish-subscribe-message.png)
 
+
+
+
+##Redis三种集群模式
+
+###Redis主从复制
     
+####为什么要使用Redis的主从复制？
+    Redis优点就是读写速度快以及支持丰富的数据类型等，但是也避免不了读写压力过大以及发生故障时怎么解救数据不丢失等问题！Redis的主从
+    复制就很好解救了以上的问题。
+
+
+
+
+
+
+
+###Redis哨兵模式
+####Redis哨兵的任务
+
+    有了主从复制的实现以后，如果想对主服务器进行监控，那么在redis2.6以后提供了一个"哨兵"的机制。顾名思义，哨兵的含义就是监控redis
+       系统的运行状态。可以启动多个哨兵，去监控redis数据库的运行状态。其主要功能有两点:
+       1、监控所有节点数据库是否在正常运行。
+       2、master数据库出现故障时，可以自动通过投票机制，从slave节点中选举新的master，实现将从数据库转换为主数据库的自动切换。
+    
+    Redis的哨兵(sentinel) 系统用于管理多个 Redis 服务器,该系统执行以下三个任务:
+       1、监控(Monitoring): 哨兵(sentinel) 会不断地检查你的Master和Slave是否运作正常。
+       2、提醒(Notification):当被监控的某个 Redis出现问题时, 哨兵(sentinel) 可以通过 API 向管理员或者其他应用程序发送通知。
+       3、自动故障迁移(Automatic failover):当一个Master不能正常工作时，哨兵(sentinel) 会开始一次自动故障迁移操作,它会将失效
+            Master的其中一个Slave升级为新的Master, 并让失效Master的其他Slave改为复制新的Master; 当客户端试图连接失效的Master时,
+            集群也会向客户端返回新Master的地址,使得集群可以使用Master代替失效Master。
+
+-----------------------------
+####Redis哨兵的工作原理
+    
+    哨兵(sentinel) 是一个分布式系统,你可以在一个架构中运行多个哨兵(sentinel) 进程,这些进程使用流言协议(gossipprotocols)来接收关
+        于Master是否下线的信息,并使用投票协议(agreement protocols)来决定是否执行自动故障迁移,以及选择哪个Slave作为新的Master.
+    
+    每个哨兵(sentinel) 会向其它哨兵(sentinel)、master、slave定时发送消息,以确认对方是否”活”着,如果发现对方在指定时间(可配置)内
+        未回应,则暂时认为对方已挂(所谓的”主观认为宕机” Subjective Down,简称sdown).若“哨兵群”中的多数sentinel,都报告某一master
+        没响应,系统才认为该master"彻底死亡"(即:客观上的真正down机,Objective Down,简称odown),通过一定的vote算法,从剩下的slave
+        节点中,选一台提升为master,然后自动修改相关配置.
+    
+    虽然哨兵(sentinel) 初始为一个单独的可执行文件 redis-sentinel ,但实际上它只是一个运行在特殊模式下的 Redis 服务器，你可以在
+        启动一个普通 Redis 服务器时通过给定 --sentinel 选项来启动哨兵(sentinel).
+    
+    哨兵(sentinel) 的一些设计思路和zookeeper非常类似
+     
+    1、监控
+        sentinel会每秒一次的频率与之前创建了命令连接的实例发送PING，包括主服务器、从服务器和sentinel实例，以此来判断当前实例的状态。
+            down-after-milliseconds时间内PING连接无效，则将该实例视为主观下线。之后该sentinel会向其他监控同一主服务器的sentinel
+            实例询问是否也将该服务器视为主观下线状态，当超过某quorum后将其视为客观下线状态。
+        
+        当一个主服务器被某sentinel视为客观下线状态后，该sentinel会与其他sentinel协商选出零头sentinel进行故障转移工作。每个发现主
+            服务器进入客观下线的sentinel都可以要求其他sentinel选自己为领头sentinel，选举是先到先得。同时每个sentinel每次选举都会
+            自增配置纪元，每个纪元中只会选择一个领头sentinel。如果所有超过一半的sentinel选举某sentinel领头sentinel。之后该
+            sentinel进行故障转移操作。
+        
+        如果一个Sentinel为了指定的主服务器故障转移而投票给另一个Sentinel，将会等待一段时间后试图再次故障转移这台主服务器。如果该
+            次失败另一个将尝试，Redis Sentinel保证第一个活性(liveness)属性，如果大多数Sentinel能够对话，如果主服务器下线，最后
+            只会有一个被授权来故障转移。 同时Redis Sentinel也保证安全(safety)属性，每个Sentinel将会使用不同的配置纪元来故障转
+            移同一台主服务器。
+            
+    2、故障迁移
+         首先是从主服务器的从服务器中选出一个从服务器作为新的主服务器。选点的依据依次是：网络连接正常->5秒内回复过INFO命令->10*down-after-milliseconds内与主连接过的->从服务器优先级->复制偏移量->运行id较小的。选出之后通过slaveif no ont将该从服务器升为新主服务器。
+        
+         通过slaveof ip port命令让其他从服务器复制该信主服务器。
+    
+         最后当旧主重新连接后将其变为新主的从服务器。注意如果客户端与就主服务器分隔在一起，写入的数据在恢复后由于旧主会复制新主的数据会造成数据丢失。
+    
+         故障转移成功后会通过发布订阅连接广播新的配置信息，其他sentinel收到后依据配置纪元更大来更新主服务器信息。Sentinel保证第二个活性属性：一个可以相互通信的Sentinel集合会统一到一个拥有更高版本号的相同配置上。       
+         
+         
+   
